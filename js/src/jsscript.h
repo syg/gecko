@@ -1955,6 +1955,7 @@ class LazyScript : public gc::TenuredCell
     ScriptSource *scriptSource() const {
         return sourceObject()->source();
     }
+    ScriptSource *maybeForwardedScriptSource() const;
     bool mutedErrors() const {
         return scriptSource()->mutedErrors();
     }

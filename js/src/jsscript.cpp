@@ -3737,6 +3737,12 @@ LazyScript::sourceObject() const
     return sourceObject_ ? &sourceObject_->as<ScriptSourceObject>() : nullptr;
 }
 
+js::ScriptSource *
+LazyScript::maybeForwardedScriptSource() const
+{
+    return UncheckedUnwrap(MaybeForwarded(sourceObject()))->as<ScriptSourceObject>().source();
+}
+
 /* static */ LazyScript *
 LazyScript::CreateRaw(ExclusiveContext *cx, HandleFunction fun,
                       uint64_t packedFields, uint32_t begin, uint32_t end,

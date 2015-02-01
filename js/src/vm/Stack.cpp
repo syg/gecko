@@ -1898,6 +1898,20 @@ JS::ProfilingFrameIterator::extractStack(Frame *frames, uint32_t offset, uint32_
         frames[offset + i].returnAddress = returnAddr;
         frames[offset + i].activation = activation_;
         frames[offset + i].label = labels[i];
+        frames[offset + i].hasTrackedOptimizations = false;
+        frames[offset + i].trackedOptimizationIndex = 0;
+    }
+
+    // Extract the index into the side table of optimization information and
+    // store it on the youngest frame. All inlined frames will have the same
+    // optimization information by virtue of sharing the JitcodeGlobalEntry,
+    // but such information is only interpretable on the youngest frame.
+    if (entry.hasTrackedOptimizations()) {
+        mozilla::Maybe<uint8_t> index = entry.trackedOptimizationIndexAtAddr(returnAddr);
+        if (index.isSome()) {
+            frames[offset].hasTrackedOptimizations = true;
+            frames[offset].trackedOptimizationIndex = index.value();
+        }
     }
     return depth;
 }
