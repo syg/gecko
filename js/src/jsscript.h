@@ -2052,8 +2052,8 @@ class LazyScript : public gc::TenuredCell
         p_.treatAsRunOnce = true;
     }
 
-    ScriptSource *source() const {
-        return sourceObject()->source();
+    const char *filename() const {
+        return scriptSource()->filename();
     }
     uint32_t begin() const {
         return begin_;

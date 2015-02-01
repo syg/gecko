@@ -3961,7 +3961,7 @@ LazyScriptHashPolicy::match(JSScript *script, const Lookup &lookup)
     if (!scriptChars)
         return false;
 
-    const char16_t *lazyChars = lazy->source()->chars(cx, holder);
+    const char16_t *lazyChars = lazy->scriptSource()->chars(cx, holder);
     if (!lazyChars)
         return false;
 
