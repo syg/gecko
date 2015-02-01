@@ -1853,7 +1853,8 @@ JS::ProfilingFrameIterator::stackAddress() const
 }
 
 uint32_t
-JS::ProfilingFrameIterator::extractStack(Frame *frames, uint32_t offset, uint32_t end) const
+JS::ProfilingFrameIterator::
+extractStack(Frame *frames, uint32_t offset, uint32_t end) const
 {
     if (offset >= end)
         return 0;
@@ -1875,8 +1876,7 @@ JS::ProfilingFrameIterator::extractStack(Frame *frames, uint32_t offset, uint32_
     // Look up an entry for the return address.
     jit::JitcodeGlobalTable *table = rt_->jitRuntime()->getJitcodeGlobalTable();
     jit::JitcodeGlobalEntry entry;
-    mozilla::DebugOnly<bool> result = table->lookup(returnAddr, &entry, rt_);
-    MOZ_ASSERT(result);
+    table->lookupInfallible(returnAddr, &entry, rt_);
 
     MOZ_ASSERT(entry.isIon() || entry.isIonCache() || entry.isBaseline() || entry.isDummy());
 

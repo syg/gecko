@@ -184,6 +184,8 @@ public:
   int64_t        mRssMemory;
   int64_t        mUssMemory;
 #endif
+
+  void StreamTrackedOptimizations(JSStreamWriter& b, void* addr, uint8_t index);
 };
 
 std::ostream& operator<<(std::ostream& stream, const ThreadProfile& profile);

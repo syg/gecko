@@ -8,7 +8,10 @@
 #include "platform.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
+
+// JS
 #include "jsapi.h"
+#include "js/TrackedOptimizationInfo.h"
 
 // JSON
 #include "JSStreamWriter.h"
@@ -93,8 +96,8 @@ void ProfileEntry::log()
   // by looking through all the use points of TableTicker.cpp.
   //   mTagMarker (ProfilerMarker*) m
   //   mTagData   (const char*)  c,s
-  //   mTagPtr    (void*)        d,l,L,B (immediate backtrace), S(start-of-stack)
-  //   mTagInt    (int)          n,f,y,T (thread id)
+  //   mTagPtr    (void*)        d,l,L,E,B (immediate backtrace), S(start-of-stack),
+  //   mTagInt    (int)          n,f,y,o,T (thread id)
   //   mTagChar   (char)         h
   //   mTagFloat  (double)       r,t,p,R (resident memory), U (unshared memory)
   switch (mTagName) {
@@ -102,9 +105,9 @@ void ProfileEntry::log()
       LOGF("%c \"%s\"", mTagName, mTagMarker->GetMarkerName()); break;
     case 'c': case 's':
       LOGF("%c \"%s\"", mTagName, mTagData); break;
-    case 'd': case 'l': case 'L': case 'B': case 'S':
+    case 'd': case 'l': case 'L': case 'B': case 'S': case 'E':
       LOGF("%c %p", mTagName, mTagPtr); break;
-    case 'n': case 'f': case 'y': case 'T':
+    case 'n': case 'f': case 'y': case 'o': case 'T':
       LOGF("%c %d", mTagName, mTagInt); break;
     case 'h':
       LOGF("%c \'%c\'", mTagName, mTagChar); break;
@@ -245,6 +248,46 @@ void ProfileBuffer::IterateTagsForThread(IterateTagsCallback aCallback, int aThr
   }
 }
 
+// TODOshu: stringify for now, should switch to enum codes in the JSON for
+// easier frontend processing.
+static const char *
+StrategyString(JS::TrackedStrategy strategy)
+{
+    switch (strategy) {
+#define STRATEGY_CASE(name, msg)                  \
+      case JS::TrackedStrategy::name:             \
+        return msg;
+    TRACKED_STRATEGY_LIST(STRATEGY_CASE)
+#undef STRATEGY_CASE
+
+      default:
+        MOZ_CRASH("bad strategy");
+    }
+}
+
+static const char *
+OutcomeString(JS::TrackedOutcome outcome)
+{
+    switch (outcome) {
+#define OUTCOME_CASE(name, msg)                   \
+      case JS::TrackedOutcome::name:              \
+        return msg;
+      TRACKED_OUTCOME_LIST(OUTCOME_CASE)
+#undef OUTCOME_CASE
+
+      default:
+        MOZ_CRASH("bad outcome");
+    }
+}
+
+void ThreadProfile::StreamTrackedOptimizations(JSStreamWriter& b, void* addr, uint8_t index)
+{
+  b.Name("opts");
+  b.BeginArray();
+  // TODOshu
+  b.EndArray();
+}
+
 void ProfileBuffer::StreamSamplesToJSObject(JSStreamWriter& b, int aThreadId)
 {
   b.BeginArray();
@@ -367,6 +410,17 @@ void ProfileBuffer::StreamSamplesToJSObject(JSStreamWriter& b, int aThreadId)
                           mEntries[readAheadPos].mTagName == 'y') {
                         b.NameValue("category", mEntries[readAheadPos].mTagInt);
                         incBy++;
+                      }
+                      readAheadPos = (framePos + incBy) % mEntrySize;
+                      if (readAheadPos != mLastFlushPos &&
+                          mEntries[readAheadPos].mTagName == 'E') {
+                        void* pc = mEntries[readAheadPos].mTagPtr;
+                        incBy++;
+                        readAheadPos = (framePos + incBy) % mEntrySize;
+                        MOZ_ASSERT(readAheadPos != mLastFlushPos &&
+                                   mEntries[readAheadPos].mTagName == 'o');
+                        uint32_t index = mEntries[readAheadPos].mTagInt;
+                        StreamTrackedOptimizations(b, pc, mozilla::AssertedCast<uint8_t>(index));
                       }
                     b.EndObject();
                   }
